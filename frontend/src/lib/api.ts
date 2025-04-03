@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-let apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+let apiBaseUrl = "https://voltus-crm-demo.onrender.com";
 // Remove trailing slash if present
 if (apiBaseUrl.endsWith('/')) {
   apiBaseUrl = apiBaseUrl.slice(0, -1);
