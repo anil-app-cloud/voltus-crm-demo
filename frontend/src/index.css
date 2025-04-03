@@ -1,0 +1,786 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 216 98% 52%;
+    --primary-foreground: 210 40% 98%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 221 70% 45%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-gray-50 text-foreground dark:bg-gray-900 dark:text-gray-100;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  }
+}
+
+/* WorldZoneCRM Styles */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  @apply bg-white;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.sidebar-logo {
+  @apply text-primary font-bold;
+  padding: 1.5rem;
+  font-size: 1.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-menu {
+  margin-top: 1.5rem;
+}
+
+.sidebar-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.sidebar-menu-item.active {
+  @apply text-primary;
+  background-color: rgba(37, 99, 235, 0.1);
+  border-left: 3px solid rgb(37, 99, 235);
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-menu-item-icon {
+  margin-right: 0.75rem;
+}
+
+/* Main Content */
+.main-content {
+  margin-left: 240px;
+  width: calc(100% - 240px);
+  padding: 0;
+  @apply bg-gray-50;
+}
+
+.header {
+  @apply bg-white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.header-title {
+  font-weight: 600;
+  font-size: 1.5rem;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+}
+
+.header-nav-item {
+  display: flex;
+  align-items: center;
+  margin-left: 1.5rem;
+  color: #4b5563;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  @apply bg-white text-gray-600;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  margin-right: 0.75rem;
+}
+
+.edit-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  @apply bg-primary text-white;
+}
+
+/* Customer Header */
+.customer-header-section {
+  @apply bg-white;
+  padding: 2rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.customer-header-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.customer-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.customer-subtitle {
+  @apply text-muted-foreground;
+}
+
+.customer-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.customer-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.customer-avatar {
+  @apply bg-primary text-white;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.customer-info {
+  flex: 1;
+}
+
+.customer-name {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.customer-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.customer-meta-item {
+  display: flex;
+  align-items: center;
+  color: #4b5563;
+}
+
+.customer-meta-icon {
+  margin-right: 0.5rem;
+  color: #9ca3af;
+}
+
+.customer-contact-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.contact-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.contact-button-primary {
+  @apply bg-primary text-white;
+}
+
+.contact-button-secondary {
+  @apply bg-white text-gray-600;
+}
+
+/* Tabs */
+.tabs-container {
+  @apply bg-white;
+  padding: 0 2rem;
+}
+
+.tab-nav {
+  display: flex;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.tab-item {
+  padding: 1rem 1.5rem;
+  font-weight: 500;
+  color: #4b5563;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-item.active {
+  @apply text-primary;
+  border-bottom: 2px solid rgb(37, 99, 235);
+}
+
+.tab-content {
+  padding: 2rem;
+  @apply bg-gray-50;
+}
+
+/* Dashboard cards */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.dashboard-grid-full {
+  grid-column: span 2;
+}
+
+.card {
+  @apply bg-white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.card-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.card-action {
+  @apply text-primary;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.card-content {
+  padding: 1.25rem;
+}
+
+/* Stat cards */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  @apply bg-white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1.25rem;
+}
+
+.stat-title {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-change {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.stat-change-positive {
+  color: #10b981;
+}
+
+.stat-change-negative {
+  color: #ef4444;
+}
+
+.stat-change-icon {
+  margin-right: 0.25rem;
+}
+
+.stat-description {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+/* Tables */
+.table-container {
+  @apply bg-white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th, .table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.table th {
+  font-weight: 500;
+  color: #6b7280;
+  background-color: #f9fafb;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table-action {
+  color: #4b5563;
+  font-weight: 500;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-processing {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.status-completed {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-quoted {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.status-won {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-lost {
+  @apply bg-red-100 text-red-800;
+}
+
+.status-current {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.status-due-soon {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.status-overdue {
+  @apply bg-red-100 text-red-800;
+}
+
+.status-paid {
+  @apply bg-green-100 text-green-800;
+}
+
+/* Communications */
+.communication-item {
+  @apply bg-white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.communication-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  @apply bg-gray-50;
+}
+
+.communication-type {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.communication-type-icon {
+  margin-right: 0.5rem;
+}
+
+.communication-date {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.communication-content {
+  padding: 1rem;
+}
+
+.communication-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Contacts */
+.contact-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.375rem;
+  @apply bg-primary text-white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.contact-card {
+  @apply bg-white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.contact-info {
+  flex: 1;
+}
+
+.contact-name {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.contact-title {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.contact-details {
+  font-size: 0.875rem;
+}
+
+/* Booking Enquiries */
+.booking-card {
+  @apply bg-white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.booking-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.booking-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.booking-date {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.booking-details {
+  padding: 1rem;
+}
+
+.booking-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.booking-info-item {
+  margin-bottom: 0.5rem;
+}
+
+.booking-info-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.booking-info-value {
+  font-weight: 500;
+}
+
+.booking-footer {
+  padding: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Activity Timeline */
+.activity-timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.activity-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  @apply bg-gray-200;
+}
+
+.activity-item {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.activity-item::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem;
+  top: 0.25rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  @apply bg-primary;
+}
+
+.activity-date {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.activity-content {
+  font-weight: 500;
+}
+
+.activity-description {
+  margin-top: 0.25rem;
+  color: #6b7280;
+}
+
+/* Shadcn Component Overrides */
+.shadcn-card {
+  @apply rounded-lg border shadow-sm;
+}
+
+.shadcn-button {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+}
+
+.shadcn-button-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+.shadcn-tabs {
+  @apply w-full;
+}
+
+.shadcn-tabs-list {
+  @apply inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground;
+}
+
+.shadcn-tabs-trigger {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm;
+}
+
+/* Custom Badge Variants */
+.badge-variant-processing {
+  @apply bg-blue-100 text-blue-800 hover:bg-blue-100;
+}
+
+.badge-variant-completed {
+  @apply bg-green-100 text-green-800 hover:bg-green-100;
+}
+
+.badge-variant-quoted {
+  @apply bg-yellow-100 text-yellow-800 hover:bg-yellow-100;
+}
+
+.badge-variant-won {
+  @apply bg-green-100 text-green-800 hover:bg-green-100;
+}
+
+.badge-variant-lost {
+  @apply bg-red-100 text-red-800 hover:bg-red-100;
+}
+
+.badge-variant-current {
+  @apply bg-blue-100 text-blue-800 hover:bg-blue-100;
+}
+
+.badge-variant-due-soon {
+  @apply bg-yellow-100 text-yellow-800 hover:bg-yellow-100;
+}
+
+.badge-variant-overdue {
+  @apply bg-red-100 text-red-800 hover:bg-red-100;
+}
+
+.badge-variant-paid {
+  @apply bg-green-100 text-green-800 hover:bg-green-100;
+}
+
+/* Responsive layout adjustments */
+@media (max-width: 1024px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar.open {
+    width: 240px;
+    transform: translateX(0);
+  }
+  
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .customer-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .customer-meta {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .booking-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Import animations */
+@import './styles/animations.css'; 

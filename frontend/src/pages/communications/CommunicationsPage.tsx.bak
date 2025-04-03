@@ -1,0 +1,823 @@
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import axios from 'axios';
+import { Plus, Search, Phone, Mail, Clipboard, ArrowUpRight, Edit, Trash, X, Filter, Calendar, Tag, User, CheckCircle2 } from 'lucide-react';
+import Layout from '../../components/layout/Layout';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../../components/ui/table';
+import { Button } from '../../components/ui/button';
+import { getCommunications, getAllCustomers, updateCommunication, createCommunication, deleteCommunication } from '../../lib/api';
+import { Communication, Customer } from '../../types';
+import CommunicationModal from './CommunicationModal';
+import { useNavigate } from 'react-router-dom';
+
+// Helper function to check if an error is an axios cancellation error
+const isCancelError = (error: any): boolean => {
+  return axios.isCancel(error) || 
+    (error && error.message === 'Request cancelled - duplicate in flight') ||
+    (error && error.code === 'ERR_CANCELED');
+};
+
+interface CommunicationTableProps {
+  communications: Communication[];
+  onEdit: (comm: Communication) => void;
+  onDelete: (id: string) => void;
+}
+
+interface ToastProps {
+  message: string;
+  type: 'success' | 'error';
+}
+
+const showToast = ({ message, type }: ToastProps) => {
+  const toastElement = document.createElement('div');
+  toastElement.innerHTML = message;
+  toastElement.style.position = 'fixed';
+  toastElement.style.bottom = '20px';
+  toastElement.style.right = '20px';
+  toastElement.style.backgroundColor = type === 'success' ? 'rgba(34,197,94,0.9)' : 'rgba(239,68,68,0.9)';
+  toastElement.style.color = 'white';
+  toastElement.style.padding = '10px 15px';
+  toastElement.style.borderRadius = '4px';
+  toastElement.style.zIndex = '9999';
+  document.body.appendChild(toastElement);
+  
+  setTimeout(() => {
+    document.body.removeChild(toastElement);
+  }, 3000);
+};
+
+const CommunicationsPage = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [communications, setCommunications] = useState<Communication[]>([]);
+  const [filteredCommunications, setFilteredCommunications] = useState<Communication[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [customerFilter, setCustomerFilter] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentCommunication, setCurrentCommunication] = useState<Communication | null>(null);
+  const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
+  const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Communication tags for categorization
+  const tags = ['important', 'follow-up', 'resolved', 'sales', 'support', 'new-lead'];
+
+  // Create a reference to store the abort controller
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  const fetchCommunications = async () => {
+    // Cancel any previous requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create a new AbortController
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
+    setIsLoading(true);
+    
+    try {
+      // Make API calls in parallel
+      const [commsData, customersData] = await Promise.all([
+        getCommunications(),
+        getAllCustomers()
+      ]);
+      
+      // Only process the results if the request wasn't aborted
+      if (!signal.aborted) {
+        console.log('Fetched Communications:', commsData);
+        
+        // Ensure we have valid arrays to prevent undefined issues
+        const communications = Array.isArray(commsData) ? commsData : [];
+        const customers = Array.isArray(customersData) ? customersData : [];
+        
+        setCommunications(communications);
+        setFilteredCommunications(communications);
+        setCustomers(customers);
+        setIsLoading(false);
+      }
+    } catch (error: any) {
+      // Completely ignore cancel errors
+      if (!isCancelError(error) && !signal.aborted) {
+        console.error('Error fetching communications:', error);
+        showToast({ message: 'Failed to fetch communications', type: 'error' });
+        setIsLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchCommunications();
+    
+    // Clean up function to cancel pending requests when component unmounts
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Apply filters whenever communications or filter criteria change
+  useEffect(() => {
+    if (communications &&communications.length > 0) {
+      const filtered = filterCommunications(searchTerm, typeFilter, dateFilter, customerFilter);
+      setFilteredCommunications(filtered);
+    }
+  }, [communications]);
+
+  const filterCommunications = (search: string, type: string, date: string, customer: string) => {
+    let filtered = [...communications];
+
+    // Apply search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(comm => 
+        comm.subject?.toLowerCase().includes(searchLower) ||
+        comm.content?.toLowerCase().includes(searchLower) ||
+        comm.from_name?.toLowerCase().includes(searchLower) ||
+        comm.to_name?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply type filter
+    if (type !== 'all') {
+      filtered = filtered.filter(comm => comm.type === type);
+    }
+
+    // Apply date filter
+    if (date !== 'all') {
+      const today = new Date();
+      const filterDate = new Date(today);
+      
+      switch (date) {
+        case 'today':
+          filtered = filtered.filter(comm => 
+            new Date(comm.date).toDateString() === today.toDateString()
+          );
+          break;
+        case 'week':
+          filterDate.setDate(today.getDate() - 7);
+          filtered = filtered.filter(comm => 
+            new Date(comm.date) >= filterDate
+          );
+          break;
+        case 'month':
+          filterDate.setMonth(today.getMonth() - 1);
+          filtered = filtered.filter(comm => 
+            new Date(comm.date) >= filterDate
+          );
+          break;
+      }
+    }
+
+    // Apply customer filter
+    if (customer !== '') {
+      filtered = filtered.filter(comm => comm.customer_id === customer);
+    }
+
+    return filtered;
+  };
+
+  // Update filters and set filtered communications
+  const applyFilters = () => {
+    const filtered = filterCommunications(searchTerm, typeFilter, dateFilter, customerFilter);
+    setFilteredCommunications(filtered);
+  };
+
+  // Update handlers to use applyFilters
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    const filtered = filterCommunications(term, typeFilter, dateFilter, customerFilter);
+    setFilteredCommunications(filtered);
+  };
+
+  const handleTypeFilter = (type: string) => {
+    setTypeFilter(type);
+    const filtered = filterCommunications(searchTerm, type, dateFilter, customerFilter);
+    setFilteredCommunications(filtered);
+  };
+
+  const handleDateFilter = (date: string) => {
+    setDateFilter(date);
+    const filtered = filterCommunications(searchTerm, typeFilter, date, customerFilter);
+    setFilteredCommunications(filtered);
+  };
+
+  const handleCustomerFilter = (customerId: string) => {
+    setCustomerFilter(customerId);
+    const filtered = filterCommunications(searchTerm, typeFilter, dateFilter, customerId);
+    setFilteredCommunications(filtered);
+  };
+
+  const handleAddCommunication = () => {
+    setCurrentCommunication(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditCommunication = (communication: Communication) => {
+    setCurrentCommunication(communication);
+    setIsModalOpen(true);
+  };
+  
+  const handleViewCommunication = (communication: Communication) => {
+    setCurrentCommunication(communication);
+    setIsDetailViewOpen(true);
+  };
+
+  const handleDeleteCommunication = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this communication?')) {
+      try {
+        await deleteCommunication(id);
+        const updatedCommunications = communications.filter(comm => comm.id !== id);
+        setCommunications(updatedCommunications);
+        setFilteredCommunications(updatedCommunications);
+        showToast({ message: 'Communication deleted successfully', type: 'success' });
+      } catch (error) {
+        console.error('Error deleting communication:', error);
+        showToast({ message: 'Error deleting communication', type: 'error' });
+      }
+    }
+  };
+
+  const handleSaveCommunication = async (commData: Partial<Communication>) => {
+    try {
+      console.log('Processing communication data:', commData);
+      
+      // Validate required fields client-side before sending to API
+      if (!commData.customer_id) {
+        throw new Error('Customer ID is required');
+      }
+      
+      if (!commData.type) {
+        throw new Error('Communication type is required');
+      }
+      
+      if (!commData.subject) {
+        throw new Error('Subject is required');
+      }
+      
+      // For email and note types, content is required
+      if ((commData.type === 'email' || commData.type === 'note') && !commData.content) {
+        throw new Error(`Content is required for ${commData.type} communications`);
+      }
+      
+      // For call type, summary is required and will be used as content
+      if (commData.type === 'call' && !commData.summary) {
+        throw new Error('Summary is required for call communications');
+      }
+      
+      // Ensure we have all required fields with proper types
+      const processedData: Partial<Communication> = {
+        ...commData,
+        customer_id: commData.customer_id.toString(),
+        type: commData.type as 'email' | 'call' | 'note',
+        subject: commData.subject,
+        content: commData.content || commData.summary || '',  // Use summary as content for calls
+        date: commData.date || new Date().toISOString(),
+        status: commData.status || 'internal',
+        tags: commData.tags || [],
+        from_name: commData.from_name || 'System User',
+      };
+      
+      console.log('Sending validated communication data:', processedData);
+      
+      if (currentCommunication) {
+        // Update existing communication
+        const updatedComm = await updateCommunication(currentCommunication.id, processedData);
+        
+        // Update state with new data
+        const updatedCommunications = communications.map(comm => 
+          comm.id === currentCommunication.id ? updatedComm : comm
+        );
+        setCommunications(updatedCommunications);
+        setFilteredCommunications(filterCommunications(
+          searchTerm, 
+          typeFilter, 
+          dateFilter, 
+          customerFilter
+        ));
+      } else {
+        // Add new communication
+        const newComm = await createCommunication(processedData);
+        
+        if (newComm) {
+          // Update state with new data
+          const updatedCommunications = [...communications, newComm];
+          setCommunications(updatedCommunications);
+          setFilteredCommunications(filterCommunications(
+            searchTerm, 
+            typeFilter, 
+            dateFilter, 
+            customerFilter
+          ));
+        } else {
+          throw new Error('Failed to create communication - no data returned');
+        }
+      }
+      
+      setIsModalOpen(false);
+      showToast({ 
+        message: currentCommunication ? 'Communication updated successfully' : 'Communication created successfully',
+        type: 'success'
+      });
+    } catch (error: any) {
+      console.error('Error saving communication:', error);
+      
+      // Show a user-friendly error message
+      let errorMessage = 'Error saving communication';
+      
+      if (error.response?.data?.error) {
+        // Server returned an error message
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        // Use the error message from the thrown error
+        errorMessage = error.message;
+      }
+      
+      showToast({ message: errorMessage, type: 'error' });
+    }
+  };
+  
+  const handleAddTag = (commId: string, tag: string) => {
+    const updatedCommunications = communications.map(comm => {
+      if (comm.id === commId) {
+        const existingTags = comm.tags || [];
+        if (!existingTags.includes(tag)) {
+          return { ...comm, tags: [...existingTags, tag] };
+        }
+      }
+      return comm;
+    });
+    
+    setCommunications(updatedCommunications);
+    const filtered = filterCommunications(searchTerm, typeFilter, dateFilter, customerFilter);
+    setFilteredCommunications(filtered);
+  };
+  
+  const handleRemoveTag = (commId: string, tag: string) => {
+    const updatedCommunications = communications.map(comm => {
+      if (comm.id === commId) {
+        const existingTags = comm.tags || [];
+        return { ...comm, tags: existingTags.filter(t => t !== tag) };
+      }
+      return comm;
+    });
+    
+    setCommunications(updatedCommunications);
+    const filtered = filterCommunications(searchTerm, typeFilter, dateFilter, customerFilter);
+    setFilteredCommunications(filtered);
+  };
+
+  const getCustomerName = (customerId: string) => {
+    const customer = customers.find(c => c.id === customerId);
+    return customer ? customer.company_name : 'Unknown Customer';
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    
+    // Check if it's today
+    const today = new Date();
+    const isToday = date.getDate() === today.getDate() && 
+                   date.getMonth() === today.getMonth() && 
+                   date.getFullYear() === today.getFullYear();
+    
+    if (isToday) {
+      return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    
+    // Check if it's yesterday
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.getDate() === yesterday.getDate() && 
+                       date.getMonth() === yesterday.getMonth() && 
+                       date.getFullYear() === yesterday.getFullYear();
+    
+    if (isYesterday) {
+      return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    
+    // Otherwise show full date
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+  
+  const getTagColor = (tag: string) => {
+    switch(tag) {
+      case 'important': return 'bg-red-100 text-red-800';
+      case 'follow-up': return 'bg-amber-100 text-amber-800';
+      case 'resolved': return 'bg-green-100 text-green-800';
+      case 'sales': return 'bg-blue-100 text-blue-800';
+      case 'support': return 'bg-purple-100 text-purple-800';
+      case 'new-lead': return 'bg-sky-100 text-sky-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
+  const countActiveFilters = () => {
+    let count = 0;
+    if (searchTerm) count++;
+    if (typeFilter !== 'all') count++;
+    if (dateFilter !== 'all') count++;
+    if (customerFilter) count++;
+    return count;
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="w-full">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-bold">Communications</h1>
+          <Button onClick={handleAddCommunication}>
+            <Plus className="mr-2 h-4 w-4" /> New Communication
+          </Button>
+        </div>
+
+        <Card className="mb-8">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base font-medium">Filter Communications</CardTitle>
+            <div className="flex items-center space-x-2">
+              {countActiveFilters() > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setTypeFilter('all');
+                    setDateFilter('all');
+                    setCustomerFilter('');
+                  }}
+                  className="h-8 text-xs"
+                >
+                  Clear filters ({countActiveFilters()})
+                </Button>
+              )}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
+                className="h-8"
+              >
+                <Filter className="h-4 w-4 mr-1" />
+                {isAdvancedFilterOpen ? 'Simple Filter' : 'Advanced Filter'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <div className="flex flex-col md:flex-row gap-4 mb-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search communications..."
+                  className="pl-10 pr-10 py-2 w-full border rounded-md"
+                  value={searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setSearchTerm('');
+                      searchInputRef.current?.blur();
+                    }
+                  }}
+                  ref={searchInputRef}
+                />
+                {searchTerm && (
+                  <button 
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" 
+                    onClick={() => setSearchTerm('')}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button 
+                  variant={typeFilter === 'email' ? 'default' : 'outline'} 
+                  onClick={() => handleTypeFilter('email')}
+                  className="flex items-center h-9"
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email
+                </Button>
+                <Button 
+                  variant={typeFilter === 'call' ? 'default' : 'outline'} 
+                  onClick={() => handleTypeFilter('call')}
+                  className="flex items-center h-9"
+                >
+                  <Phone className="mr-2 h-4 w-4" />
+                  Call
+                </Button>
+                <Button 
+                  variant={typeFilter === 'note' ? 'default' : 'outline'} 
+                  onClick={() => handleTypeFilter('note')}
+                  className="flex items-center h-9"
+                >
+                  <Clipboard className="mr-2 h-4 w-4" />
+                  Note
+                </Button>
+              </div>
+            </div>
+            
+            {isAdvancedFilterOpen && (
+              <div className="pt-3 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Date Range</label>
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        size="sm"
+                        variant={dateFilter === 'all' ? 'default' : 'outline'} 
+                        onClick={() => handleDateFilter('all')}
+                        className="h-8"
+                      >
+                        All Time
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant={dateFilter === 'today' ? 'default' : 'outline'} 
+                        onClick={() => handleDateFilter('today')}
+                        className="h-8"
+                      >
+                        Today
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant={dateFilter === 'week' ? 'default' : 'outline'} 
+                        onClick={() => handleDateFilter('week')}
+                        className="h-8"
+                      >
+                        This Week
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant={dateFilter === 'month' ? 'default' : 'outline'} 
+                        onClick={() => handleDateFilter('month')}
+                        className="h-8"
+                      >
+                        This Month
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="pb-4">
+                    <label className="block mb-2 text-sm font-medium">Customer</label>
+                    <select 
+                      className="w-full p-2 border rounded-md text-sm" 
+                      value={customerFilter || ''}
+                      onChange={(e) => handleCustomerFilter(e.target.value || '')}
+                    >
+                      <option value="">All Customers</option>
+                      {customers.slice(0, 5).map(customer => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.company_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {filteredCommunications &&filteredCommunications.length > 0 ? (
+          <div className="space-y-6">
+            {filteredCommunications.map((comm) => (
+              <Card key={comm.id} className="overflow-hidden group hover:border-primary/30 transition-colors">
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 bg-muted/50 p-4">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      {comm.type === 'email' && <Mail className="h-4 w-4 text-blue-500" />}
+                      {comm.type === 'call' && <Phone className="h-4 w-4 text-green-500" />}
+                      {comm.type === 'note' && <Clipboard className="h-4 w-4 text-amber-500" />}
+                      <CardTitle className="text-base capitalize">{comm.type}</CardTitle>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(comm.date)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground flex items-center space-x-2">
+                      <User className="h-3 w-3 text-gray-400" />
+                      <span>{getCustomerName(comm.customer_id)}</span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {comm.tags && comm.tags.map(tag => (
+                        <span 
+                          key={tag} 
+                          className={`text-xs px-1.5 py-0.5 rounded-full flex items-center ${getTagColor(tag)}`}
+                        >
+                          <span>{tag}</span>
+                          <button 
+                            className="ml-1 hover:text-gray-700" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveTag(comm.id, tag);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <div className="relative group">
+                        <button 
+                          className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          onClick={(e) => {
+                            e.currentTarget.nextElementSibling?.classList.toggle('hidden');
+                          }}
+                        >
+                          <span className="flex items-center">
+                            <Tag className="h-3 w-3 mr-1" />
+                            Add tag
+                          </span>
+                        </button>
+                        <div className="hidden absolute left-0 top-full mt-1 bg-white shadow-lg rounded-md z-10 p-2 border min-w-40">
+                          {tags.filter(tag => !comm.tags?.includes(tag)).map(tag => (
+                            <button
+                              key={tag}
+                              className={`block w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 ${getTagColor(tag).replace('bg-', 'hover:bg-')}`}
+                              onClick={() => handleAddTag(comm.id, tag)}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleViewCommunication(comm)}
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleEditCommunication(comm)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 text-red-500"
+                      onClick={() => handleDeleteCommunication(comm.id.toString())}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 cursor-pointer" onClick={() => handleViewCommunication(comm)}>
+                  {comm.type === 'email' && (
+                    <>
+                      <div className="mb-2 text-sm">
+                        <strong>From:</strong> {comm.from_name} ({comm.from_title})
+                      </div>
+                      {comm.to_name && (
+                        <div className="mb-2 text-sm">
+                          <strong>To:</strong> {comm.to_name} ({comm.to_title})
+                        </div>
+                      )}
+                      {comm.subject && (
+                        <div className="mb-2 text-sm font-medium">
+                          {comm.subject}
+                        </div>
+                      )}
+                      {comm.content && <div className="mt-3 whitespace-pre-line text-sm line-clamp-3">{comm.content}</div>}
+                    </>
+                  )}
+
+                  {comm.type === 'call' && (
+                    <>
+                      <div className="mb-2 text-sm">
+                        <strong>Between:</strong> {comm.from_name} ({comm.from_title})
+                        {comm.to_name && ` and ${comm.to_name} (${comm.to_title})`}
+                      </div>
+                      {comm.duration_minutes && (
+                        <div className="mb-2 text-sm">
+                          <strong>Duration:</strong> {comm.duration_minutes} minutes
+                        </div>
+                      )}
+                      {comm.summary && (
+                        <div className="mt-2 line-clamp-3 text-sm">
+                          <strong>Summary:</strong> {comm.summary}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {comm.type === 'note' && (
+                    <>
+                      <div className="mb-2 text-sm">
+                        <strong>Created by:</strong> {comm.from_name} ({comm.from_title})
+                      </div>
+                      {comm.content && <div className="mt-2 text-sm line-clamp-3">{comm.content}</div>}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 border rounded-md bg-gray-50">
+            <div className="mb-3 text-gray-400">
+              <Search className="h-12 w-12 mx-auto opacity-30" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No communications found</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Try adjusting your filters or create a new communication.
+            </p>
+            <Button size="sm" onClick={() => {
+              setSearchTerm('');
+              setTypeFilter('all');
+              setDateFilter('all');
+              setCustomerFilter('');
+            }}>Clear all filters</Button>
+          </div>
+        )}
+      </div>
+
+      {isModalOpen && (
+        <CommunicationModal
+          isOpen={isModalOpen}
+          communication={currentCommunication}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveCommunication}
+          customers={customers}
+        />
+      )}
+      
+      {/* Communication Detail View */}
+      {isDetailViewOpen && currentCommunication && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-semibold flex items-center">
+                <span className="bg-primary/10 text-primary p-2 rounded-full mr-3">
+                  {currentCommunication.type === 'email' && <Mail className="h-6 w-6" />}
+                  {currentCommunication.type === 'call' && <Phone className="h-6 w-6" />}
+                  {currentCommunication.type === 'note' && <Clipboard className="h-6 w-6" />}
+                </span>
+                {currentCommunication.type.charAt(0).toUpperCase() + currentCommunication.type.slice(1)}
+                {currentCommunication.type === 'email' && currentCommunication.subject && `: ${currentCommunication.subject}`}
+              </h2>
+              <button
+                onClick={() => setIsDetailViewOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="bg-gray-50 p-4 rounded-lg border mb-6">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Customer</div>
+                    <div className="text-sm font-medium">{getCustomerName(currentCommunication.customer_id)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Date & Time</div>
+                    <div className="text-sm">{formatDate(currentCommunication.date)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">From</div>
+                    <div className="text-sm">{currentCommunication.from_name} ({currentCommunication.from_title})</div>
+                  </div>
+                  {currentCommunication.to_name && (
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">To</div>
+                      <div className="text-sm">{currentCommunication.to_name} ({currentCommunication.to_title})</div>
+                    </div>
+                  )}
+                  {currentCommunication.duration_minutes && (
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Duration</div>
+                      <div className="text-sm">{currentCommunication.duration_minutes} minutes</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <h3 className="text-sm font-medium mb-2">Tags</h3>
+                <div className="flex flex-wrap gap-2">
+                  {currentCommunication.tags && currentCommunication.tags.map(tag => (
+                    <span 
+                      key={tag} 
+                      className={`
